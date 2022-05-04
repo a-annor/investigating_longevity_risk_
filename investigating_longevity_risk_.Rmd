@@ -19,16 +19,22 @@ dataMF <- hmd.mx(country='GBR_NP', username='#####', password='#####!', label = 
 
 Plot the log central death rates against age for each cohort for males and females respectively. 
 
-The coloured lines indicate the year, the deepest red being 1922 and the lightest purple being the most recent year avaible (at the time this was ran this was 2016). The sharp increase from late teens to early twenties is known as the accident hump. In recent years, this is mainly due to increased driving accidents, particularly among males. Notice that the accident hump for males is larger than the accident hump for females.
+The coloured lines indicate the year, the deepest red being 1922 and the lightest purple being the most recent year avaible
+(at the time this was ran this was 2016). The sharp increase from late teens to early twenties is known as the accident hump. 
+In recent years, this is mainly due to increased driving accidents, particularly among males. Notice that the accident hump for 
+males is larger than the accident hump for females.
 
 ```{r}
 plot(dataMF, series="male", ylim=c(-12,0), lty=2)
 plot(dataMF, series="male", ylim=c(-12,0),plot.type="time", lty=2, xlab="Year")
 ```
 
-Plot the log central death rates change throughout time for each age (with ages ranging from 0 to 110). From the figures it is clear that the log central death rates decrease throughout the years. 
+Plot the log central death rates change throughout time for each age (with ages ranging from 0 to 110). From the figures 
+it is clear that the log central death rates decrease throughout the years. 
 
-We can see that the survival probability is increasing at all ages. This is likely to be due to medical advancements and changes in lifestyle such as exercising and a reduction in smoking. 
+We can see that the survival probability is increasing at all ages. This is likely to be due to medical advancements and 
+changes in lifestyle such as exercising and a reduction in smoking. 
+
 Note: Each coloured line represents a different age.
 
 ```{r}
@@ -66,7 +72,9 @@ lines(x=lc.dataM$year, y=lc.dataM$kt, main="kt", col="blue",lwd=1.5)
 legend("topright" , c("Male","Female","Total"), col=c("blue","#FF00EF","black"),lty=1)
 ```
 
-To forecast mortality rates into future years, we look at the time dependant parameter kt. Using ARIMA models (a class of models used to forecast time series) we extrapolate the adjusted kt to obtain future mortality rates. The mortality rates can be forecasted 110 years into the future with ARIMA models as shown below.
+To forecast mortality rates into future years, we look at the time dependant parameter kt. Using ARIMA models 
+(a class of models used to forecast time series) we extrapolate the adjusted kt to obtain future mortality rates. 
+The mortality rates can be forecasted 110 years into the future with ARIMA models as shown below.
 
 ```{r}
 forecast.lc.dataT<-forecast(lc.dataT, h=110)
@@ -90,9 +98,11 @@ legend("topright" , c("Male","Female","Total"), col=c("blue","#FF00EF","black"),
 abline(v=2016, lty=2)
 ```
 
-Create a life table for the males and females in R and find the survival probabilities. Using this we calculate a65 and e65 for an interest rate of 5% per annum.
+Create a life table for the males and females in R and find the survival probabilities. Using this we calculate 
+a65 and e65 for an interest rate of 5% per annum.
 
-We can see that in 2014, at age 65 men are expected to live another 22.5 years and women are expected to live another 24.43 years. Hence, men and women are expected to live until ages 87.50 and 89.43 respectively.
+We can see that in 2014, at age 65 men are expected to live another 22.5 years and women are expected to live 
+another 24.43 years. Hence, men and women are expected to live until ages 87.50 and 89.43 respectively.
 
 ```{r}
 library(lifecontingencies)
@@ -138,7 +148,8 @@ for(i in seq(1986,2016,by=4)) {
 
 ACTUARIAL ESTIMATE 
 
-Now we calculate the same life expectancy or men and women aged 65 in the 2014 cohort with interest rate at 5%, however using the Actuarial Estimate.
+Now we calculate the same life expectancy or men and women aged 65 in the 2014 cohort with interest rate at 5%,
+however now using the Actuarial Estimate.
 
 We observe that at age 65, men are expected to live until age 76.55 and women are expected to live until age 80.15. 
 
