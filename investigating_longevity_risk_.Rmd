@@ -1,0 +1,320 @@
+---
+title: "Survival Analysis - Investigating Longevity Risk"
+author: "Afiba Annor"
+date: '2022-05-04'
+output: html_document
+---
+
+NOTE: All figures written refer to figure produced with the script was ran in 2020 with mortality data present that this time, ranging from 1922 - 2016.
+
+
+LEE-CARTER MODEL
+
+Load in mortality data in the United Kingdom from the Human Mortality Databases
+
+```{r}
+library(demography)
+dataMF <- hmd.mx(country='GBR_NP', username='#####', password='#####!', label = 'United Kingdom')
+```
+
+Plot the log central death rates against age for each cohort for males and females respectively. 
+
+The coloured lines indicate the year, the deepest red being 1922 and the lightest purple being the most recent year avaible (at the time this was ran this was 2016). The sharp increase from late teens to early twenties is known as the accident hump. In recent years, this is mainly due to increased driving accidents, particularly among males. Notice that the accident hump for males is larger than the accident hump for females.
+
+```{r}
+plot(dataMF, series="male", ylim=c(-12,0), lty=2)
+plot(dataMF, series="male", ylim=c(-12,0),plot.type="time", lty=2, xlab="Year")
+```
+
+Plot the log central death rates change throughout time for each age (with ages ranging from 0 to 110). From the figures it is clear that the log central death rates decrease throughout the years. 
+
+We can see that the survival probability is increasing at all ages. This is likely to be due to medical advancements and changes in lifestyle such as exercising and a reduction in smoking. 
+Note: Each coloured line represents a different age.
+
+```{r}
+plot(dataMF, series="female", ylim=c(-12,0), lty=2)
+
+plot(dataMF, series="female", ylim=c(-12,0),plot.type="time", lty=2, xlab="Year")
+```
+
+Having fitted the Lee–Carter model we can see how the parameters change with age or
+time for our data set.
+
+The average log mortality rate, ax, behaves as expected, similar to figures 8 and 9.
+Again we can see that the accident hump is larger for males. The deviation in the log
+mortality rate, bx, is the greatest during the early stages of life, decreasing gradually in
+adult life. Also the general trend of log mortality, kt, decreases through time.
+
+```{r}
+lc.dataM<-lca(dataMF, series="male", max.age = 90)
+lc.dataF<-lca(dataMF, series="female", max.age=90)
+lc.dataT<-lca(dataMF, series="total", max.age = 90)
+
+plot(lc.dataT$ax, main="ax", xlab="Age",ylab="ax",lwd=1.5,type="l")
+lines(x=lc.dataF$age, y=lc.dataF$ax, main="ax", col="#FF00EF",lwd=1.5)
+lines(x=lc.dataM$age, y=lc.dataM$ax, main="ax", col="blue",lwd=1.5)
+legend("topleft" , c("Male","Female","Total"), col=c("blue","#FF00EF","black"),lty=1)
+
+plot(lc.dataT$bx, main="bx", xlab="Age",ylab="bx",lwd=1.5, ylim=c(0,0.028),type="l")
+lines(x=lc.dataF$age, y=lc.dataF$bx, main="bx", col="#FF00EF",lwd=1.5)
+lines(x=lc.dataM$age, y=lc.dataM$bx, main="bx", col="blue",lwd=1.5)
+legend("topright" , c("Male","Female","Total"), col=c("blue","#FF00EF","black"),lty=1)
+
+plot(lc.dataT$kt, main="kt", xlab="Year",ylab="kt",lwd=1.5, ylim=c(-130,100),type="l")
+lines(x=lc.dataF$year, y=lc.dataF$kt, main="kt", col="#FF00EF",lwd=1.5)
+lines(x=lc.dataM$year, y=lc.dataM$kt, main="kt", col="blue",lwd=1.5)
+legend("topright" , c("Male","Female","Total"), col=c("blue","#FF00EF","black"),lty=1)
+```
+
+To forecast mortality rates into future years, we look at the time dependant parameter kt. Using ARIMA models (a class of models used to forecast time series) we extrapolate the adjusted kt to obtain future mortality rates. The mortality rates can be forecasted 110 years into the future with ARIMA models as shown below.
+
+```{r}
+forecast.lc.dataT<-forecast(lc.dataT, h=110)
+forecast.lc.dataM<-forecast(lc.dataM, h=110)
+forecast.lc.dataF<-forecast(lc.dataF, h=110)
+plot(forecast.lc.dataT$kt,main="Total", ylab="kt",xlab="Year")
+plot(forecast.lc.dataM$kt,main="Male", ylab="kt",xlab="Year")
+plot(forecast.lc.dataF$kt,main="Female", ylab="kt",xlab="Year")
+```
+
+
+```{r}
+muM<-cbind(dataMF$rate$male[0:90,],forecast.lc.dataM$rate$male[0:90,])
+muF<-cbind(dataMF$rate$female[0:90,],forecast.lc.dataF$rate$female[0:90,])
+muT<-cbind(dataMF$rate$total[0:90,],forecast.lc.dataT$rate$total[0:90,])
+
+plot(seq(min(dataMF$year),max(dataMF$year)+110                             ),muM[65,],type="l",col="blue",xlab="Year",ylab="Mortality Rate", ylim = c(0,0.043), main="Past and Forecasted Mortality Rates")
+lines(seq(min(dataMF$year),max(dataMF$year)+110),muT[65,])
+lines(seq(min(dataMF$year),max(dataMF$year)+110),muF[65,], col="#FF00EF")
+legend("topright" , c("Male","Female","Total"), col=c("blue","#FF00EF","black"),lty=1)
+abline(v=2016, lty=2)
+```
+
+Create a life table for the males and females in R and find the survival probabilities. Using this we calculate a65 and e65 for an interest rate of 5% per annum.
+
+We can see that in 2014, at age 65 men are expected to live another 22.5 years and women are expected to live another 24.43 years. Hence, men and women are expected to live until ages 87.50 and 89.43 respectively.
+
+```{r}
+library(lifecontingencies)
+createActuarialTable<-function(yearOfBirth,rate){
+mxcoh <- rate[1:nrow(rate),(yearOfBirth-min(dataMF$year)+1):ncol(rate)]
+cohort.mx <- diag(mxcoh)
+cohort.px=exp(-cohort.mx)
+#get projected Px
+fittedPx=cohort.px #add px to table
+px4Completion=seq(from=cohort.px[length(fittedPx)], to=0, length=20)
+totalPx=c(fittedPx,px4Completion[2:length(px4Completion)])
+#create life table
+irate=0.05
+
+cohortLt=probs2lifetable(probs=totalPx, radix=100000,type="px",
+name=paste("Cohort",yearOfBirth))
+cohortAct=new("actuarialtable",x=cohortLt@x, lx=cohortLt@lx,
+interest=irate, name=cohortLt@name)
+return(cohortAct)
+ }
+getAnnuityAPV<-function(yearOfBirth,rate) {
+actuarialTable<-createActuarialTable(yearOfBirth,rate)
+out=axn(actuarialTable,x=65)
+return(out)
+}
+rate<-muM
+for(i in seq(1986,2016,by=4)) {
+ cat("For cohort ",i, "the e65 for a male is",
+ round(exn(createActuarialTable(i,rate), x=65),2),
+ " and the APV is :",round(getAnnuityAPV(i,rate),2),"\n")
+
+ }
+```
+```{r}
+rate<-muF
+for(i in seq(1986,2016,by=4)) {
+ cat("For cohort ",i, "the e65 for a female is",
+ round(exn(createActuarialTable(i,rate), x=65),2),
+ " and the APV is :",round(getAnnuityAPV(i,rate),2),"\n")
+
+ }
+```
+
+ACTUARIAL ESTIMATE 
+
+Now we calculate the same life expectancy or men and women aged 65 in the 2014 cohort with interest rate at 5%, however using the Actuarial Estimate.
+
+We observe that at age 65, men are expected to live until age 76.55 and women are expected to live until age 80.15. 
+
+
+```{r}
+totalval<-c(0)
+life_exp<-c(0)
+lx<-dataMF$pop$male[,93]
+for(i in 0:25) {
+ lx_t<-lx[66+i]
+ tp_65<-lx_t/lx[66]
+ an_t<-tp_65*(1/1.05)^i
+ #print(an_t)
+ final<-append(totalval,an_t)
+ totalval<-final
+ 
+}
+cat("At age 65, the value of the annuity using the actuarial estimate is ", round(sum(totalval),2))
+for(i in 1:26){
+        kp_0<-lx[66+i]/lx[6]
+        ex_n<-append(life_exp,kp_0)
+        life_exp<-ex_n
+}
+cat(". The life expectancy of a male life aged 65 in 2014 is", round(sum(life_exp),2))
+```
+
+```{r}
+totalval<-c(0)
+life_exp<-c(0)
+lx<-dataMF$pop$female[,93]
+for(i in 0:25) {
+ lx_t<-lx[66+i]
+ tp_65<-lx_t/lx[66]
+ an_t<-tp_65*(1/1.05)^i
+ #print(an_t)
+ final<-append(totalval,an_t)
+ totalval<-final
+ 
+}
+cat("At age 65, the value of the annuity using the actuarial estimate is ", round(sum(totalval),2))
+for(i in 1:26){
+        kp_0<-lx[66+i]/lx[66]
+        ex_n<-append(life_exp,kp_0)
+        life_exp<-ex_n
+}
+cat(". The life expectancy of a female life aged 65 in 2014 is", round(sum(life_exp),2))
+```
+
+MAKEHAM MODEL
+
+Create a life table for the 2014 cohort in R, again with interest rate i = 5% per annum. 
+
+We observe that at age 65, men are expected to live until age 82.06 and women are expected to live until age 83.98.
+
+```{r}
+library(MortalityLaws)
+x  <- 0:91
+mx <- dataMF[["rate"]][["male"]][0:92,93] # select data
+Makeham_M <- MortalityLaw(x = x, mx = mx, law = 'makeham')
+Makeham_M
+plot(Makeham_M)
+
+Makeham_M$coefficients
+
+MakLT_M<-LifeTable(x = x, qx = fitted(Makeham_M))
+MakLT_M
+
+totalval<-c(0)
+life_exp<-c(0)
+Mklx<-MakLT_M$lt$lx
+for(i in 0:25) {
+ lx_t<-Mklx[66+i]
+ tp_65<-lx_t/Mklx[66]
+ an_t<-tp_65*(1/1.05)^i
+ #print(an_t)
+ final<-append(totalval,an_t)
+ totalval<-final
+ 
+}
+cat("The annuity using the Makeham estimate is ", round(sum(totalval),2))
+for(i in 1:91){
+        kp_0<-Mklx[1+i]/Mklx[1]
+        ex_n<-append(life_exp,kp_0)
+        life_exp<-ex_n
+}
+
+cat(". The life expectancy of a male life born in 2014 is", round(sum(life_exp),2))
+```
+```{r}
+library(MortalityLaws)
+x  <- 0:91
+mx <- dataMF[["rate"]][["female"]][0:92,93] # select data
+Makeham_F <- MortalityLaw(x = x, mx = mx, law = 'makeham')
+Makeham_F
+plot(Makeham_F)
+
+Makeham_F$coefficients
+
+MakLT_F<-LifeTable(x = x, qx = fitted(Makeham_F))
+MakLT_F
+
+totalval<-c(0)
+life_exp<-c(0)
+Mklx<-MakLT_F$lt$lx
+for(i in 0:25) {
+ lx_t<-Mklx[66+i]
+ tp_65<-lx_t/Mklx[66]
+ an_t<-tp_65*(1/1.05)^i
+ #print(an_t)
+ final<-append(totalval,an_t)
+ totalval<-final
+ 
+}
+cat("The annuity using the Makeham estimate is ", round(sum(totalval),2))
+for(i in 1:91){
+        kp_0<-Mklx[1+i]/Mklx[1]
+        ex_n<-append(life_exp,kp_0)
+        life_exp<-ex_n
+}
+
+cat(". The life expectancy of a female life born in 2014 is", round(sum(life_exp),2))
+```
+
+
+```{r}
+
+MakLT_M<-LifeTable(x = x, qx = fitted(Makeham_M))
+MakLT_M
+
+totalval<-c(0)
+life_exp<-c(0)
+Mklx<-MakLT_M$lt$lx
+for(i in 0:25) {
+ lx_t<-Mklx[66+i]
+ tp_65<-lx_t/Mklx[66]
+ an_t<-tp_65*(1/1.05)^i
+ #print(an_t)
+ final<-append(totalval,an_t)
+ totalval<-final
+ 
+}
+cat("At age 65, the value of the annuity using the Makeham estimate is ", round(sum(totalval),2))
+life_exp<-c(0)
+Mklx<-MakLT_M$lt$lx
+for(i in 1:26){
+        kp_65<-Mklx[66+i]/Mklx[66]
+        ex_n<-append(life_exp,kp_65)
+        life_exp<-ex_n
+}
+
+cat(". The life expectancy of a male life aged 65 in 2014 is", round(sum(life_exp),2))
+```
+
+```{r}
+MakLT_F<-LifeTable(x = x, qx = fitted(Makeham_F))
+MakLT_F
+
+totalval<-c(0)
+life_exp<-c(0)
+Mklx<-MakLT_F$lt$lx
+for(i in 0:25) {
+ lx_t<-Mklx[66+i]
+ tp_65<-lx_t/Mklx[66]
+ an_t<-tp_65*(1/1.05)^i
+ #print(an_t)
+ final<-append(totalval,an_t)
+ totalval<-final
+ 
+}
+cat("At age 65, the value of the annuity using the Makeham estimate is ", round(sum(totalval),2))
+for(i in 1:26){
+        kp_65<-Mklx[66+i]/Mklx[66]
+        ex_n<-append(life_exp,kp_65)
+        life_exp<-ex_n
+}
+
+cat(". The life expectancy of a female life aged 65 in 2014 is", round(sum(life_exp),2))
+```
+
