@@ -7,5 +7,3 @@ Modelling data and predictive analysis is vital for any organization, it enables
 </p>
 
 The project discusses the importance of accounting for increasing life expectancies when it comes to retirement planning to mitigate longevity risk. Underestimation of life expectancy can result in pension providers paying out more money over a longer period than expected. Hence, whole of life contracts have high longevity risk as the contract pays the policyholder for the rest of their life. Using the statistical package R, I analyse various survival models in order to form predictions on life expectancy and investigate longevity risk. Please note all figures written in the R Markdown refer to figures produced by the script with the mortality data present at the time the script was run, ranging from 1922 - 2016.
-
-To view the full project please refer to the following link: https://www.overleaf.com/read/nhqmhnhxgbjk
